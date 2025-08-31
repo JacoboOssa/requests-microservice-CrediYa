@@ -60,4 +60,4 @@ resilience4j:
         waitDurationInOpenState: "10s"
 routes:
   paths:
-    request: "/api/v1/solicitud"
+    request: "/api/v1/requests"

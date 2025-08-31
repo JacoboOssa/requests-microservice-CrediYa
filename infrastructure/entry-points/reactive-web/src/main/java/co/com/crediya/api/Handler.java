@@ -35,7 +35,7 @@ public class Handler {
                         ServerResponse.ok()
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(responseDTO))
-                .doOnError(error -> log.error("Error processing petition: {}", error.getMessage(), error));
+                .doOnError(error -> log.error("Error processing petition: {}", error.getMessage()));
     }
 
 
