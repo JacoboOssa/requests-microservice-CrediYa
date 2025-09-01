@@ -22,5 +22,8 @@ public interface PetitionDTOMapper {
     default LoanType mapLoanType(CreatePetitionDTO dto) {
         return LoanType.builder()
                 .name(dto.loanTypeName())
-                .build();    }
+                .build();
+    }
+
+
 }
