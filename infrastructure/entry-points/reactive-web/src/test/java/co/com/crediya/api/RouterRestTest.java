@@ -1,60 +1,124 @@
 package co.com.crediya.api;
 
+import co.com.crediya.api.config.RequestPath;
+import co.com.crediya.api.dto.request.CreatePetitionDTO;
+import co.com.crediya.api.dto.response.ErrorResponseDTO;
+import co.com.crediya.api.dto.response.PetitionResponseDTO;
+import co.com.crediya.api.exceptionhandler.GlobalErrorAttributes;
+import co.com.crediya.api.exceptionhandler.GlobalExceptionHandler;
+import co.com.crediya.api.mapper.PetitionDTOMapper;
+import co.com.crediya.api.util.PetitionUtil;
+import co.com.crediya.api.validator.PetitionValidator;
+import co.com.crediya.model.exception.BusinessException;
+import co.com.crediya.model.petition.Petition;
+import co.com.crediya.usecase.petition.PetitionUseCase;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Mono;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ContextConfiguration(classes = {RouterRest.class, Handler.class})
+@EnableConfigurationProperties(RequestPath.class)
+@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests"})
 @WebFluxTest
+@Import({GlobalErrorAttributes.class, GlobalExceptionHandler.class})
 class RouterRestTest {
 
     @Autowired
     private WebTestClient webTestClient;
 
+    @MockitoBean
+    private PetitionDTOMapper petitionDTOMapper;
+
+    @MockitoBean
+    private PetitionValidator petitionValidator;
+
+    @MockitoBean
+    private PetitionUseCase petitionUseCase;
+
+    @Autowired
+    private RequestPath requestPath;
+
+    private String registerRequestPath = "/api/v1/requests";
+
     @Test
-    void testListenGETUseCase() {
-        webTestClient.get()
-                .uri("/api/usecase/path")
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class)
-                .value(userResponse -> {
-                            Assertions.assertThat(userResponse).isEmpty();
-                        }
-                );
+    void shouldLoadTaskPathProperties() {
+        assertEquals(registerRequestPath, requestPath.getRequest());
     }
 
     @Test
-    void testListenGETOtherUseCase() {
-        webTestClient.get()
-                .uri("/api/otherusercase/path")
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class)
-                .value(userResponse -> {
-                            Assertions.assertThat(userResponse).isEmpty();
-                        }
-                );
-    }
+    void mustRegisterRequest() {
+        when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
+        when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class))).thenReturn(Mono.just(PetitionUtil.petition()));
+        when(petitionDTOMapper.toPetitionResponseDTO(any(Petition.class))).thenReturn(PetitionUtil.petitionResponseDTO());
 
-    @Test
-    void testListenPOSTUseCase() {
         webTestClient.post()
-                .uri("/api/usecase/otherpath")
+                .uri(registerRequestPath)
+                .bodyValue(PetitionUtil.createPetitionDTO())
                 .accept(MediaType.APPLICATION_JSON)
-                .bodyValue("")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class)
-                .value(userResponse -> {
-                            Assertions.assertThat(userResponse).isEmpty();
-                        }
-                );
+                .expectBody(PetitionResponseDTO.class)
+                .value(response -> {
+                    Assertions.assertThat(response).isNotNull();
+                    Assertions.assertThat(response.loanType().name()).isEqualTo(PetitionUtil.petitionResponseDTO().loanType().name());
+                }
+        );
     }
+
+    @Test
+    void mustFailWhenLoanTypeNotExist() {
+        when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
+        when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class)))
+                .thenReturn(Mono.error(new BusinessException(BusinessException.LOAN_TYPE_NOT_FOUND)));
+
+        webTestClient.post()
+                .uri(registerRequestPath)
+                .bodyValue(PetitionUtil.createPetitionDTO())
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().is4xxClientError()
+                .expectBody()
+                .jsonPath("$.message").isEqualTo(BusinessException.LOAN_TYPE_NOT_FOUND)
+                .jsonPath("$.method").isEqualTo("POST")
+                .jsonPath("$.path").isEqualTo(registerRequestPath);
+    }
+
+    @Test
+    void mustFailWhenAmountIsOutOfRange() {
+        when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
+        when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class)))
+                .thenReturn(Mono.error(new BusinessException(BusinessException.AMOUNT_OUT_OF_RANGE)));
+
+        webTestClient.post()
+                .uri(registerRequestPath)
+                .bodyValue(PetitionUtil.createPetitionDTO())
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().is4xxClientError()
+                .expectBody()
+                .jsonPath("$.message").isEqualTo(BusinessException.AMOUNT_OUT_OF_RANGE)
+                .jsonPath("$.method").isEqualTo("POST")
+                .jsonPath("$.path").isEqualTo(registerRequestPath);
+    }
+
+
+
+
+
 }
