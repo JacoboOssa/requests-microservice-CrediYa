@@ -6,6 +6,7 @@ import co.com.crediya.model.user.User;
 import co.com.crediya.model.user.gateways.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -22,7 +23,7 @@ public class RestConsumer implements UserRepository {
         return client.get()
                 .uri("api/v1/usuarios/{identificationNumber}", identificationNumber)
                 .retrieve()
-                .onStatus(status -> status.is4xxClientError(), // lambda compatible con HttpStatusCode
+                .onStatus(status -> status.is4xxClientError(),
                         response -> Mono.error(
                                 new BusinessException(BusinessException.USER_NOT_FOUND + ": " + identificationNumber)
                         ))
