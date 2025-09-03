@@ -1,6 +1,8 @@
 package co.com.crediya.usecase.petition;
 
+import co.com.crediya.model.exception.AuthorizationException;
 import co.com.crediya.model.exception.BusinessException;
+import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.loantype.gateways.LoanTypeRepository;
 import co.com.crediya.model.petition.gateways.PetitionRepository;
 import co.com.crediya.model.status.gateways.StatusRepository;
@@ -87,9 +89,10 @@ class PetitionUseCaseTest {
     @Test
     void mustValidateUser() {
         String identificationNumber = "123456789";
-        when(userRepository.findByIdentificationNumber(identificationNumber)).thenReturn(Mono.just(UserUtil.user()));
+        String token = "validToken";
+        when(userRepository.findByIdentificationNumber(identificationNumber, token)).thenReturn(Mono.just(UserUtil.user()));
 
-        StepVerifier.create(userRepository.findByIdentificationNumber(identificationNumber))
+        StepVerifier.create(userRepository.findByIdentificationNumber(identificationNumber, token))
                 .expectNextMatches(user -> user.getEmail().equals("jq@gmail.com"))
                 .verifyComplete();
     }
@@ -97,34 +100,60 @@ class PetitionUseCaseTest {
     @Test
     void mustReturnErrorWhenUserNotFound() {
         String identificationNumber = "987654321";
-        when(userRepository.findByIdentificationNumber(identificationNumber)).thenReturn(Mono.empty());
+        String token = "validToken";
+        when(userRepository.findByIdentificationNumber(identificationNumber, token)).thenReturn(Mono.empty());
 
-        StepVerifier.create(userRepository.findByIdentificationNumber(identificationNumber)
+        StepVerifier.create(userRepository.findByIdentificationNumber(identificationNumber, token)
                         .switchIfEmpty(Mono.error(new BusinessException(BusinessException.USER_NOT_FOUND))))
                 .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
                         throwable.getMessage().equals(BusinessException.USER_NOT_FOUND))
                 .verify();
     }
 
+
+    @Test
+    void mustThrowForbiddenWhenRoleIsNotClient() {
+        var petition = PetitionUtil.petition();
+        var user = UserUtil.user();
+        user.setRol("ROLE_ADMIN");
+        String token = "Bearer validToken";
+
+        when(userRepository.validateJwtToken("validToken")).thenReturn(Mono.just(user));
+
+        StepVerifier.create(petitionUseCase.registerPetition(petition, "123456789", token))
+                .expectErrorMatches(throwable -> throwable instanceof AuthorizationException &&
+                        throwable.getMessage().equals(AuthorizationException.FORBIDDEN))
+                .verify();
+    }
+
+
     @Test
     void mustRegisterPetition() {
         String identificationNumber = "123456789";
+        String token = "Bearer validToken";
+        String extractedToken = "validToken";
+
         var petition = PetitionUtil.petition();
         var user = UserUtil.user();
+        user.setRol("ROLE_CLIENT");
+
         var loanType = LoanTypeUtil.loanType();
         var status = StatusUtil.status();
 
-        when(userRepository.findByIdentificationNumber(identificationNumber)).thenReturn(Mono.just(user));
+        when(userRepository.validateJwtToken(extractedToken)).thenReturn(Mono.just(user));
+        when(userRepository.findByIdentificationNumber(identificationNumber, extractedToken)).thenReturn(Mono.just(user));
         when(loanTypeRepository.findByName(petition.getLoanType().getName())).thenReturn(Mono.just(loanType));
         when(statusRepository.getStatusByName("PENDIENTE")).thenReturn(Mono.just(status));
         when(petitionRepository.savePetition(petition)).thenReturn(Mono.just(petition));
 
-        StepVerifier.create(petitionUseCase.registerPetition(petition, identificationNumber))
-                .expectNextMatches(savedPetition -> savedPetition.getEmail().equals(user.getEmail()) &&
-                        savedPetition.getLoanType().getName().equals(loanType.getName()) &&
-                        savedPetition.getStatus().getName().equals(status.getName()))
+        StepVerifier.create(petitionUseCase.registerPetition(petition, identificationNumber, token))
+                .expectNextMatches(savedPetition ->
+                        savedPetition.getEmail().equals(user.getEmail()) &&
+                                savedPetition.getLoanType().getName().equals(loanType.getName()) &&
+                                savedPetition.getStatus().getName().equals(status.getName()))
                 .verifyComplete();
     }
+
 
 
 

@@ -1,6 +1,5 @@
 package co.com.crediya.usecase.petition;
 
-//import co.com.crediya.model.auth.gateways.AuthRepository;
 import co.com.crediya.model.exception.AuthorizationException;
 import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
@@ -24,7 +23,6 @@ public class PetitionUseCase {
     private final LoanTypeRepository loanTypeRepository;
     private final UserRepository userRepository;
     private final StatusRepository statusRepository;
-//    private final AuthRepository authRepository;
 
     public Mono<Petition> registerPetition(Petition petition, String identificationNumber, String token) {
         final String extractedToken = extractToken(token);
@@ -81,7 +79,7 @@ public class PetitionUseCase {
 
     private String extractToken(String token) {
         if (token == null || !token.startsWith("Bearer ")) {
-            throw new BusinessException(JwtException.TOKEN_NOT_FOUND);
+            throw new JwtException(JwtException.TOKEN_NOT_FOUND);
         }
         return token.substring(7);
     }

@@ -9,9 +9,12 @@ import co.com.crediya.api.exceptionhandler.GlobalExceptionHandler;
 import co.com.crediya.api.mapper.PetitionDTOMapper;
 import co.com.crediya.api.util.PetitionUtil;
 import co.com.crediya.api.validator.PetitionValidator;
+import co.com.crediya.model.exception.AuthorizationException;
 import co.com.crediya.model.exception.BusinessException;
+import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.usecase.petition.PetitionUseCase;
+import jakarta.validation.ConstraintViolationException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,11 +65,12 @@ class RouterRestTest {
     void mustRegisterRequest() {
         when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
         when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
-        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class))).thenReturn(Mono.just(PetitionUtil.petition()));
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class), any(String.class))).thenReturn(Mono.just(PetitionUtil.petition()));
         when(petitionDTOMapper.toPetitionResponseDTO(any(Petition.class))).thenReturn(PetitionUtil.petitionResponseDTO());
 
         webTestClient.post()
                 .uri(registerRequestPath)
+                .header("Authorization", "Bearer validToken")
                 .bodyValue(PetitionUtil.createPetitionDTO())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
@@ -83,11 +87,12 @@ class RouterRestTest {
     void mustFailWhenLoanTypeNotExist() {
         when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
         when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
-        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class)))
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class), any(String.class)))
                 .thenReturn(Mono.error(new BusinessException(BusinessException.LOAN_TYPE_NOT_FOUND)));
 
         webTestClient.post()
                 .uri(registerRequestPath)
+                .header("Authorization", "Bearer validToken")
                 .bodyValue(PetitionUtil.createPetitionDTO())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
@@ -102,17 +107,58 @@ class RouterRestTest {
     void mustFailWhenAmountIsOutOfRange() {
         when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
         when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
-        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class)))
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class), any(String.class)))
                 .thenReturn(Mono.error(new BusinessException(BusinessException.AMOUNT_OUT_OF_RANGE)));
 
         webTestClient.post()
                 .uri(registerRequestPath)
+                .header("Authorization", "Bearer validToken")
                 .bodyValue(PetitionUtil.createPetitionDTO())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().is4xxClientError()
                 .expectBody()
                 .jsonPath("$.message").isEqualTo(BusinessException.AMOUNT_OUT_OF_RANGE)
+                .jsonPath("$.method").isEqualTo("POST")
+                .jsonPath("$.path").isEqualTo(registerRequestPath);
+    }
+
+    @Test
+    void mustFailWhenTokenIsInvalid(){
+        when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
+        when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class), any(String.class)))
+                .thenReturn(Mono.error(new JwtException(JwtException.INVALID_TOKEN)));
+
+        webTestClient.post()
+                .uri(registerRequestPath)
+                .header("Authorization", "Bearer invalidToken")
+                .bodyValue(PetitionUtil.createPetitionDTO())
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().is4xxClientError()
+                .expectBody()
+                .jsonPath("$.message").isEqualTo(JwtException.INVALID_TOKEN)
+                .jsonPath("$.method").isEqualTo("POST")
+                .jsonPath("$.path").isEqualTo(registerRequestPath);
+    }
+
+    @Test
+    void mustFailWhenRolHasNoPermission(){
+        when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
+        when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class), any(String.class)))
+                .thenReturn(Mono.error(new AuthorizationException(AuthorizationException.FORBIDDEN)));
+
+        webTestClient.post()
+                .uri(registerRequestPath)
+                .header("Authorization", "Bearer noPermissionToken")
+                .bodyValue(PetitionUtil.createPetitionDTO())
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().is4xxClientError()
+                .expectBody()
+                .jsonPath("$.message").isEqualTo(AuthorizationException.FORBIDDEN)
                 .jsonPath("$.method").isEqualTo("POST")
                 .jsonPath("$.path").isEqualTo(registerRequestPath);
     }
