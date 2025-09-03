@@ -2,7 +2,6 @@ package co.com.crediya.api;
 
 import co.com.crediya.api.config.RequestPath;
 import co.com.crediya.api.dto.request.CreatePetitionDTO;
-import co.com.crediya.api.dto.response.ErrorResponseDTO;
 import co.com.crediya.api.dto.response.PetitionResponseDTO;
 import co.com.crediya.api.exceptionhandler.GlobalErrorAttributes;
 import co.com.crediya.api.exceptionhandler.GlobalExceptionHandler;
@@ -14,7 +13,6 @@ import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.usecase.petition.PetitionUseCase;
-import jakarta.validation.ConstraintViolationException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +32,7 @@ import static org.mockito.Mockito.when;
 
 @ContextConfiguration(classes = {RouterRest.class, Handler.class})
 @EnableConfigurationProperties(RequestPath.class)
-@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests"})
+@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests","routes.paths.get-all-requests=/api/v1/requests"})
 @WebFluxTest
 @Import({GlobalErrorAttributes.class, GlobalExceptionHandler.class})
 class RouterRestTest {

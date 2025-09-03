@@ -18,7 +18,7 @@ class UserMapperTest {
 
     @Test
     void shouldMapToUserFromJwt() {
-        AuthUserResponseDTO dto = new AuthUserResponseDTO("test@mail.com", "ADMIN");
+        AuthUserResponseDTO dto = new AuthUserResponseDTO("test@mail.com", "ADMIN",null,null,null);
 
         User user = userMapper.toUserFromJwt(dto);
 
@@ -29,12 +29,24 @@ class UserMapperTest {
 
     @Test
     void shouldMapToUserFromEmail() {
-        AuthUserResponseDTO dto = new AuthUserResponseDTO("emailonly@mail.com", "USER_SHOULD_BE_IGNORED");
+        AuthUserResponseDTO dto = new AuthUserResponseDTO("emailonly@mail.com", "USER_SHOULD_BE_IGNORED",null,null,null);
 
         User user = userMapper.toUserFromEmail(dto);
 
         assertThat(user).isNotNull();
         assertThat(user.getEmail()).isEqualTo("emailonly@mail.com");
-        assertThat(user.getRol()).isNull(); // Porque toUserFromEmail() ignora el rol
+        assertThat(user.getRol()).isNull();
+    }
+
+    @Test
+    void shouldMapToUserFromExtraInfo() {
+        AuthUserResponseDTO dto = new AuthUserResponseDTO(null, null,"John","Doe",50000.0);
+
+        User user = userMapper.toUserFromExtraInfo(dto);
+
+        assertThat(user).isNotNull();
+        assertThat(user.getName()).isEqualTo("John");
+        assertThat(user.getLastName()).isEqualTo("Doe");
+        assertThat(user.getBaseSalary()).isEqualTo(50000.0);
     }
 }

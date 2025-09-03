@@ -23,7 +23,7 @@ import reactor.core.publisher.Mono;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests"})
+@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests","routes.paths.get-all-requests=/api/v1/requests"})
 @EnableConfigurationProperties(RequestPath.class)
 @ContextConfiguration(classes = {RouterRest.class, Handler.class})
 @WebFluxTest
