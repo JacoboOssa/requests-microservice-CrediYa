@@ -14,5 +14,9 @@ public class UserMapper {
     public User toUserFromEmail(AuthUserResponseDTO dto) {
         return User.fromEmail(dto.email());
     }
+
+    public User toUserFromExtraInfo(AuthUserResponseDTO dto) {
+        return User.fromExtraInfo(dto.name(), dto.lastName(), dto.baseSalary());
+    }
 }
 

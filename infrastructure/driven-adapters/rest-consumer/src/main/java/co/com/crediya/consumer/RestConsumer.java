@@ -2,6 +2,7 @@ package co.com.crediya.consumer;
 
 import co.com.crediya.consumer.dto.AuthUserResponseDTO;
 import co.com.crediya.consumer.mapper.UserMapper;
+import co.com.crediya.model.exception.AuthorizationException;
 import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.user.User;
@@ -27,12 +28,12 @@ public class RestConsumer implements UserRepository {
                 .uri("api/v1/usuarios/{identificationNumber}", identificationNumber)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .retrieve()
-                .onStatus(
-                        status -> status.is4xxClientError(),
-                        response -> Mono.error(new BusinessException(
-                                BusinessException.USER_NOT_FOUND + ": " + identificationNumber
-                        ))
-                )
+                .onStatus(status -> status.value() == HttpStatus.UNAUTHORIZED.value(),
+                        response -> Mono.error(new JwtException(JwtException.INVALID_TOKEN)))
+                .onStatus(status -> status.value() == HttpStatus.CONFLICT.value(),
+                        response -> Mono.error(new BusinessException(BusinessException.USER_NOT_FOUND)))
+                .onStatus(status -> status.value() == HttpStatus.FORBIDDEN.value(),
+                        response -> Mono.error(new AuthorizationException(AuthorizationException.UNAUTHORIZED)))
                 .bodyToMono(AuthUserResponseDTO.class)
                 .map(userMapper::toUserFromEmail) // ← Usando mapper, no `new`
                 .doOnError(error ->
@@ -50,11 +51,31 @@ public class RestConsumer implements UserRepository {
                         response -> Mono.error(new JwtException(JwtException.INVALID_TOKEN)))
                 .onStatus(status -> status.value() == HttpStatus.CONFLICT.value(),
                         response -> Mono.error(new BusinessException(BusinessException.USER_NOT_FOUND)))
+                .onStatus(status -> status.value() == HttpStatus.FORBIDDEN.value(),
+                        response -> Mono.error(new AuthorizationException(AuthorizationException.UNAUTHORIZED)))
                 .bodyToMono(AuthUserResponseDTO.class)
                 .map(userMapper::toUserFromJwt)
                 .doOnError(error -> log.error("Error al validar JWT: {}", error.getMessage()));
     }
 
+    @Override
+    public Mono<User> getAllUserInfoByEmail(String email, String token) {
+        return client.get()
+                .uri("api/v1/usuarios/email/{email}", email)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .retrieve()
+                .onStatus(status -> status.value() == HttpStatus.UNAUTHORIZED.value(),
+                        response -> Mono.error(new JwtException(JwtException.INVALID_TOKEN)))
+                .onStatus(status -> status.value() == HttpStatus.CONFLICT.value(),
+                        response -> Mono.error(new BusinessException(BusinessException.USER_NOT_FOUND)))
+                .onStatus(status -> status.value() == HttpStatus.FORBIDDEN.value(),
+                        response -> Mono.error(new AuthorizationException(AuthorizationException.UNAUTHORIZED)))
+                .bodyToMono(AuthUserResponseDTO.class)
+                .map(userMapper::toUserFromExtraInfo)
+                .doOnError(error ->
+                        log.error("Error fetching user with email {}: {}", email, error.getMessage())
+                );
+    }
 
 
 }
