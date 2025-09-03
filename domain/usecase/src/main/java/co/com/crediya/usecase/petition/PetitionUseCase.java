@@ -1,5 +1,6 @@
 package co.com.crediya.usecase.petition;
 
+import co.com.crediya.model.dto.ListPetitionsDTO;
 import co.com.crediya.model.exception.AuthorizationException;
 import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
@@ -13,8 +14,11 @@ import co.com.crediya.model.user.Role;
 import co.com.crediya.model.user.User;
 import co.com.crediya.model.user.gateways.UserRepository;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -42,6 +46,47 @@ public class PetitionUseCase {
                         )
                 );
     }
+
+    public Flux<ListPetitionsDTO> getAllPetitionsPaginable(List<String> statuses, int page, int size, String token) {
+        final String extractedToken = extractToken(token);
+
+        return userRepository.validateJwtToken(extractedToken)
+                .switchIfEmpty(Mono.error(new JwtException(JwtException.INVALID_TOKEN)))
+                .flatMap(authenticatedUser -> validateRole(authenticatedUser, Role.ROLE_ASESOR.name())
+                        .thenReturn(authenticatedUser))
+                .thenMany(petitionRepository.findPetitionsByStatus(statuses, page, size))
+                .flatMap(petition -> Mono.zip(
+                        statusRepository.findById(petition.getStatus().getId()),
+                        loanTypeRepository.findById(petition.getLoanType().getId()),
+                        userRepository.getAllUserInfoByEmail(petition.getEmail(), token),
+                        petitionRepository.findApprovedByEmail(petition.getEmail()).collectList()
+                ).map(tuple -> {
+                    Status status = tuple.getT1();
+                    LoanType loanType = tuple.getT2();
+                    User user = tuple.getT3();
+                    List<Petition> approved = tuple.getT4();
+
+                    BigDecimal totalMonthlyDebt = approved.stream()
+                            .map(p -> p.getAmount()
+                                    .divide(BigDecimal.valueOf(p.getTerm()), RoundingMode.HALF_UP))
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    return ListPetitionsDTO.builder()
+                            .id(petition.getId())
+                            .email(petition.getEmail())
+                            .name(user.getName())
+                            .lastName(user.getLastName())
+                            .baseSalary(user.getBaseSalary())
+                            .term(petition.getTerm())
+                            .amount(petition.getAmount())
+                            .loanTypeName(loanType.getName())
+                            .statusName(status.getName())
+                            .totalMonthlyDebtApproved(totalMonthlyDebt)
+                            .build();
+                }));
+    }
+
+
 
 
     private Mono<User> validateUser(String identificationNumber, String token) {
@@ -83,7 +128,6 @@ public class PetitionUseCase {
         }
         return token.substring(7);
     }
-
 
 
     private Mono<Void> validateRole(User user, String allowedRole) {

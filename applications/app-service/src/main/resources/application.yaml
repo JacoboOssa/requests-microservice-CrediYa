@@ -61,3 +61,4 @@ resilience4j:
 routes:
   paths:
     request: "/api/v1/requests"
+    getAllRequests: "/api/v1/requests"

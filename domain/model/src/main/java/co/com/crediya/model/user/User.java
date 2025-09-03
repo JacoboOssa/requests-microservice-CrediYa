@@ -13,12 +13,19 @@ import lombok.Setter;
 public class User {
     private String email;
     private String rol;
+    private String name;
+    private String lastName;
+    private Double baseSalary;
 
     public static User fromJwt(String email, String rol) {
-        return new User(email, rol);
+        return new User(email, rol, null, null, null);
     }
 
     public static User fromEmail(String email) {
-        return new User(email, null);
+        return new User(email, null, null, null, null);
+    }
+
+    public static User fromExtraInfo(String name, String lastName, Double baseSalary) {
+        return new User(null, null, name, lastName, baseSalary);
     }
 }

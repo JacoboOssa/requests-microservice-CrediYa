@@ -3,8 +3,6 @@ package co.com.crediya.api;
 import co.com.crediya.api.dto.request.CreatePetitionDTO;
 import co.com.crediya.api.mapper.PetitionDTOMapper;
 import co.com.crediya.api.validator.PetitionValidator;
-import co.com.crediya.model.exception.JwtException;
-import co.com.crediya.model.loantype.LoanType;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.usecase.petition.PetitionUseCase;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +12,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+
+
+import java.util.Arrays;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -42,6 +44,27 @@ public class Handler {
                                 .bodyValue(responseDTO))
                 .doOnError(error -> log.error("Error processing petition: {}", error.getMessage()));
     }
+
+    public Mono<ServerResponse> getPetitions(ServerRequest request) {
+
+        String statusParam = request.queryParam("status").orElse("");
+        List<String> requestedStatuses = Arrays.stream(statusParam.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
+        int page = Integer.parseInt(request.queryParam("page").orElse("0"));
+        int size = Integer.parseInt(request.queryParam("size").orElse("20"));
+
+        String token = request.headers().firstHeader("Authorization");
+
+        return petitionUseCase.getAllPetitionsPaginable(requestedStatuses, page, size, token)
+                .collectList()
+                .doOnSuccess(list -> log.info("Retrieved {} petitions", list.size()))
+                .doOnError(error -> log.error("Error processing petitions: {}", error.getMessage()))
+                .flatMap(petitions -> ServerResponse.ok().bodyValue(petitions));
+    }
+
 
 
 }

@@ -1,5 +1,7 @@
 package co.com.crediya.r2dbc.helper;
+import co.com.crediya.model.loantype.LoanType;
 import co.com.crediya.model.petition.Petition;
+import co.com.crediya.model.status.Status;
 import co.com.crediya.r2dbc.entity.PetitionEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -18,4 +20,20 @@ public interface PetitionMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "loanType", ignore = true)
     Petition toDomain(PetitionEntity entity);
+
+    @Mapping(target = "status", expression = "java(mapStatus(entity.getStatusId()))")
+    @Mapping(target = "loanType", expression = "java(mapLoanType(entity.getLoanTypeId()))")
+    Petition toModel(PetitionEntity entity);
+
+    default Status mapStatus(String statusId) {
+        if (statusId == null) return null;
+        return Status.builder().id(statusId).build();
+    }
+
+    default LoanType mapLoanType(String loanTypeId) {
+        if (loanTypeId == null) return null;
+        return LoanType.builder().id(loanTypeId).build();
+    }
+
+
 }
