@@ -1,7 +1,9 @@
 package co.com.crediya.consumer;
 
 import co.com.crediya.consumer.dto.AuthUserResponseDTO;
+import co.com.crediya.consumer.mapper.UserMapper;
 import co.com.crediya.model.exception.BusinessException;
+import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.user.User;
 import co.com.crediya.model.user.gateways.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,19 +19,40 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class RestConsumer implements UserRepository {
     private final WebClient client;
+    private final UserMapper userMapper;
 
     @Override
-    public Mono<User> findByIdentificationNumber(String identificationNumber) {
+    public Mono<User> findByIdentificationNumber(String identificationNumber, String token) {
         return client.get()
                 .uri("api/v1/usuarios/{identificationNumber}", identificationNumber)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .retrieve()
-                .onStatus(status -> status.is4xxClientError(),
-                        response -> Mono.error(
-                                new BusinessException(BusinessException.USER_NOT_FOUND + ": " + identificationNumber)
+                .onStatus(
+                        status -> status.is4xxClientError(),
+                        response -> Mono.error(new BusinessException(
+                                BusinessException.USER_NOT_FOUND + ": " + identificationNumber
                         ))
+                )
                 .bodyToMono(AuthUserResponseDTO.class)
-                .map(userResponse -> new User(userResponse.email()))
-                .doOnError(error -> log.error("Error fetching user with ID {}: {}", identificationNumber, error.getMessage()));
+                .map(userMapper::toUserFromEmail) // ← Usando mapper, no `new`
+                .doOnError(error ->
+                        log.error("Error fetching user with ID {}: {}", identificationNumber, error.getMessage())
+                );
+    }
+
+
+    @Override
+    public Mono<User> validateJwtToken(String token) {
+        return client.get()
+                .uri("/auth/api/v1/validate/{jwt}", token)
+                .retrieve()
+                .onStatus(status -> status.value() == HttpStatus.UNAUTHORIZED.value(),
+                        response -> Mono.error(new JwtException(JwtException.INVALID_TOKEN)))
+                .onStatus(status -> status.value() == HttpStatus.CONFLICT.value(),
+                        response -> Mono.error(new BusinessException(BusinessException.USER_NOT_FOUND)))
+                .bodyToMono(AuthUserResponseDTO.class)
+                .map(userMapper::toUserFromJwt)
+                .doOnError(error -> log.error("Error al validar JWT: {}", error.getMessage()));
     }
 
 

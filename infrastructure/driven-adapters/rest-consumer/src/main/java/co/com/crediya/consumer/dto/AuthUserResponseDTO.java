@@ -1,6 +1,7 @@
 package co.com.crediya.consumer.dto;
 
 public record AuthUserResponseDTO(
-        String email
+        String email,
+        String rol
 ) {
 }
