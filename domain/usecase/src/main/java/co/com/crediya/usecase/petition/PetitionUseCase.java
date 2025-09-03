@@ -1,16 +1,22 @@
 package co.com.crediya.usecase.petition;
 
+//import co.com.crediya.model.auth.gateways.AuthRepository;
+import co.com.crediya.model.exception.AuthorizationException;
 import co.com.crediya.model.exception.BusinessException;
+import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.loantype.LoanType;
 import co.com.crediya.model.loantype.gateways.LoanTypeRepository;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.model.petition.gateways.PetitionRepository;
 import co.com.crediya.model.status.Status;
 import co.com.crediya.model.status.gateways.StatusRepository;
+import co.com.crediya.model.user.Role;
 import co.com.crediya.model.user.User;
 import co.com.crediya.model.user.gateways.UserRepository;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 public class PetitionUseCase {
@@ -18,18 +24,30 @@ public class PetitionUseCase {
     private final LoanTypeRepository loanTypeRepository;
     private final UserRepository userRepository;
     private final StatusRepository statusRepository;
+//    private final AuthRepository authRepository;
 
-    public Mono<Petition> registerPetition(Petition petition, String identificationNumber) {
-        return validateUser(identificationNumber)
-                .flatMap(user -> validateLoanType(petition)
+    public Mono<Petition> registerPetition(Petition petition, String identificationNumber, String token) {
+        final String extractedToken = extractToken(token);
+
+        return userRepository.validateJwtToken(extractedToken)
+                .switchIfEmpty(Mono.error(new JwtException(JwtException.INVALID_TOKEN)))
+                .flatMap(authenticatedUser -> validateRole(authenticatedUser, Role.ROLE_CLIENT.name())
+                        .thenReturn(authenticatedUser))
+                .flatMap(authenticatedUser ->
+                        validateUser(identificationNumber, extractedToken)
+                                .flatMap(identifiedUser -> validateEmailOwner(authenticatedUser, identifiedUser.getEmail())
+                                        .thenReturn(identifiedUser))
+                )
+                .flatMap(identifiedUser -> validateLoanType(petition)
                         .flatMap(loanType -> getPendingStatus()
-                                .flatMap(status -> savePetition(petition, user, loanType, status))
+                                .flatMap(status -> savePetition(petition, identifiedUser, loanType, status))
                         )
                 );
     }
 
-    private Mono<User> validateUser(String identificationNumber) {
-        return userRepository.findByIdentificationNumber(identificationNumber)
+
+    private Mono<User> validateUser(String identificationNumber, String token) {
+        return userRepository.findByIdentificationNumber(identificationNumber, token)
                 .switchIfEmpty(Mono.error(new BusinessException(BusinessException.USER_NOT_FOUND)));
     }
 
@@ -59,6 +77,30 @@ public class PetitionUseCase {
                     saved.setLoanType(loanType);
                     return saved;
                 });
+    }
+
+    private String extractToken(String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new BusinessException(JwtException.TOKEN_NOT_FOUND);
+        }
+        return token.substring(7);
+    }
+
+
+
+    private Mono<Void> validateRole(User user, String allowedRole) {
+        if (user == null || user.getRol() == null || !user.getRol().equalsIgnoreCase(allowedRole)) {
+            return Mono.error(new AuthorizationException(AuthorizationException.FORBIDDEN));
+        }
+        return Mono.empty();
+    }
+
+    private Mono<Void> validateEmailOwner(User user, String email) {
+        if (user == null || user.getEmail() == null ||
+                !user.getEmail().equalsIgnoreCase(email)) {
+            return Mono.error(new AuthorizationException(AuthorizationException.EMAIL_NOT_OWNER));
+        }
+        return Mono.empty();
     }
 
 }
