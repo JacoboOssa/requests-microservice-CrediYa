@@ -6,4 +6,5 @@ import reactor.core.publisher.Mono;
 public interface UserRepository {
     Mono<User> findByIdentificationNumber(String identificationNumber, String token);
     Mono<User> validateJwtToken(String token);
+    Mono<User> getAllUserInfoByEmail(String email, String token);
 }
