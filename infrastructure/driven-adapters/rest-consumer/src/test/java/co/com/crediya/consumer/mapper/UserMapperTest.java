@@ -5,6 +5,8 @@ import co.com.crediya.model.user.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class UserMapperTest {
@@ -47,6 +49,6 @@ class UserMapperTest {
         assertThat(user).isNotNull();
         assertThat(user.getName()).isEqualTo("John");
         assertThat(user.getLastName()).isEqualTo("Doe");
-        assertThat(user.getBaseSalary()).isEqualTo(50000.0);
+        assertThat(user.getBaseSalary()).isEqualTo(BigDecimal.valueOf(50000.0));
     }
 }

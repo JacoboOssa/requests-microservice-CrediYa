@@ -13,6 +13,7 @@ import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.usecase.petition.PetitionUseCase;
+import jakarta.validation.ConstraintViolationException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,10 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -159,6 +163,43 @@ class RouterRestTest {
                 .jsonPath("$.message").isEqualTo(AuthorizationException.FORBIDDEN)
                 .jsonPath("$.method").isEqualTo("POST")
                 .jsonPath("$.path").isEqualTo(registerRequestPath);
+    }
+
+    @Test
+    void mustFailSavePetitionWhenConstraintViolationAppears(){
+        when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.error(new ConstraintViolationException(Set.of())));
+
+        when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class), any(String.class))).thenReturn(Mono.just(PetitionUtil.petition()));
+        when(petitionDTOMapper.toPetitionResponseDTO(any(Petition.class))).thenReturn(PetitionUtil.petitionResponseDTO());
+
+        webTestClient.post()
+                .uri(registerRequestPath)
+                .header("Authorization", "Bearer validToken")
+                .bodyValue(PetitionUtil.createPetitionDTO())
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().is4xxClientError()
+                .expectBody()
+                .jsonPath("$.error").isEqualTo("Validation Error")
+                .jsonPath("$.status").isEqualTo(400);
+
+    }
+
+    @Test
+    void mustRetrieveAllNoApprovedPetitions(){
+        when(petitionUseCase.getAllPetitionsPaginable(any(), any(Integer.class),any(Integer.class),any(String.class)))
+                .thenReturn(Flux.just(PetitionUtil.listPetitionsDTO()));
+
+        webTestClient.get()
+                .uri(registerRequestPath)
+                .header("Authorization", "Bearer validToken")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[0].email").isEqualTo(PetitionUtil.listPetitionsDTO().getEmail())
+                .jsonPath("$[0].term").isEqualTo(PetitionUtil.listPetitionsDTO().getTerm());
     }
 
 

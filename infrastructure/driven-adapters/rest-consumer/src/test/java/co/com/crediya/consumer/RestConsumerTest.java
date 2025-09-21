@@ -1,7 +1,9 @@
 package co.com.crediya.consumer;
 
 
+import co.com.crediya.consumer.config.RestConsumerPath;
 import co.com.crediya.consumer.mapper.UserMapper;
+import co.com.crediya.model.exception.AuthorizationException;
 import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.user.User;
@@ -15,6 +17,7 @@ import org.mockito.Mockito;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -23,13 +26,14 @@ import java.io.IOException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-
+@TestPropertySource(properties = {"adapter.restconsumer.paths.find-by-identification-number=/api/v1/usuarios/id/{identificationNumber", "adapter.restconsumer.paths.validate-token=/auth/api/v1/validate/{jwt}","adapter.restconsumer.paths.get-all-user-info-by-email=/api/v1/usuarios/email/{email}"})
 class RestConsumerTest {
 
     private static RestConsumer restConsumer;
 
     private static MockWebServer mockBackEnd;
     private static UserMapper userMapper;
+    private static RestConsumerPath restConsumerPath;
 
 
 
@@ -38,8 +42,9 @@ class RestConsumerTest {
         mockBackEnd = new MockWebServer();
         userMapper = Mockito.mock(UserMapper.class);
         mockBackEnd.start();
+        restConsumerPath = new RestConsumerPath();
         var webClient = WebClient.builder().baseUrl(mockBackEnd.url("/").toString()).build();
-        restConsumer = new RestConsumer(webClient, userMapper);
+        restConsumer = new RestConsumer(webClient, userMapper, restConsumerPath);
     }
 
     @AfterAll
@@ -136,6 +141,112 @@ class RestConsumerTest {
                 .verify();
     }
 
+    @Test
+    void mustReturnUnauthorizedException(){
+        mockBackEnd.enqueue(new MockResponse()
+                .setResponseCode(HttpStatus.FORBIDDEN.value()));
+
+        StepVerifier.create(restConsumer.validateJwtToken("invalid-jwt-token"))
+                .expectErrorMatches(error -> error instanceof AuthorizationException &&
+                        error.getMessage().equals(AuthorizationException.UNAUTHORIZED))
+                .verify();
+    }
+
+    @Test
+    void mustReturnAllInfoFromUserGivenEmail(){
+        mockBackEnd.enqueue(new MockResponse()
+                .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .setResponseCode(HttpStatus.OK.value())
+                .setBody("{\"email\": \"jq@gmail.com\"}"));
+
+        var expectedUser = new User();
+        expectedUser.setEmail("jq@gmail.com");
+
+        when(userMapper.toUserFromExtraInfo(any())).thenReturn(expectedUser);
+
+        Mono<User> response = restConsumer.getAllUserInfoByEmail("jq@gmail.com", "validToken");
+
+        StepVerifier.create(response)
+                .expectNextMatches(user -> user.getEmail().equals("jq@gmail.com"))
+                .verifyComplete();
+    }
+
+    @Test
+    void mustReturnUserNotFoundWhenInvokeGetInfoUser(){
+        mockBackEnd.enqueue(new MockResponse()
+                .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .setResponseCode(HttpStatus.CONFLICT.value()));
+
+        Mono<User> response = restConsumer.getAllUserInfoByEmail("jq@gmail.com", "validToken");
+
+        StepVerifier.create(response)
+                .expectErrorMatches(error -> error instanceof BusinessException &&
+                        error.getMessage().equals(BusinessException.USER_NOT_FOUND))
+                .verify();
+    }
+
+    @Test
+    void mustReturnUnauthorizedErrorWhenFindEmailGivenIdentificationNumber(){
+        mockBackEnd.enqueue(new MockResponse()
+                .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .setResponseCode(HttpStatus.UNAUTHORIZED.value()));
+
+        var expectedUser = new User();
+        expectedUser.setEmail("jq@gmail.com");
+
+        Mono<User> response = restConsumer.findByIdentificationNumber("123456789", "validToken");
+
+        StepVerifier.create(response)
+                .expectErrorMatches(error -> error instanceof JwtException &&
+                        error.getMessage().equals(JwtException.INVALID_TOKEN))
+                .verify();
+    }
+
+    @Test
+    void mustReturnUnauthorizedErrorWhenFindEmailGivenEmail(){
+        mockBackEnd.enqueue(new MockResponse()
+                .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .setResponseCode(HttpStatus.UNAUTHORIZED.value()));
 
 
+        Mono<User> response = restConsumer.getAllUserInfoByEmail("jq@gmail.com", "validToken");
+
+        StepVerifier.create(response)
+                .expectErrorMatches(error -> error instanceof JwtException &&
+                        error.getMessage().equals(JwtException.INVALID_TOKEN))
+                .verify();
+    }
+
+    /*
+    @Test
+    void mustReturnForbiddenErrorWhenFindEmailGivenIdentificationNumber(){
+        mockBackEnd.enqueue(new MockResponse()
+                .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .setResponseCode(HttpStatus.FORBIDDEN.value()));
+
+        var expectedUser = new User();
+        expectedUser.setEmail("jq@gmail.com");
+
+        Mono<User> response = restConsumer.findByIdentificationNumber("123456789", "validToken");
+
+        StepVerifier.create(response)
+                .expectErrorMatches(error -> error instanceof AuthorizationException &&
+                        error.getMessage().equals(AuthorizationException.FORBIDDEN))
+                .verify();
+    }
+
+    @Test
+    void mustReturnForbiddenErrorWhenFindEmailGivenEmail(){
+        mockBackEnd.enqueue(new MockResponse()
+                .setResponseCode(HttpStatus.FORBIDDEN.value()));
+
+
+        Mono<User> response = restConsumer.getAllUserInfoByEmail("jq@gmail.com", "validToken");
+
+        StepVerifier.create(response)
+                .expectErrorMatches(error -> error instanceof AuthorizationException &&
+                        error.getMessage().equals(AuthorizationException.FORBIDDEN))
+                .verify();
+    }
+     */
 }

@@ -15,5 +15,15 @@ public class PetitionEntityUtil {
                 .loanTypeId("1")
                 .build();
     }
+    public static PetitionEntity petitionEntity2(){
+        return PetitionEntity.builder()
+                .id("2")
+                .term(36)
+                .amount(BigDecimal.valueOf(45000))
+                .email("sduran@gmail.com")
+                .statusId("1")
+                .loanTypeId("2")
+                .build();
+    }
 }
 
