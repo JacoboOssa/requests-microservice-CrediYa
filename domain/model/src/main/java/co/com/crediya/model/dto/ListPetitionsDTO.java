@@ -17,7 +17,7 @@ public class ListPetitionsDTO {
     private String email;
     private String name;
     private String lastName;
-    private Double baseSalary;
+    private BigDecimal baseSalary;
     private int term;
     private BigDecimal amount;
     private String loanTypeName;

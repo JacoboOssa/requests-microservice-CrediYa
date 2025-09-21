@@ -37,6 +37,11 @@ adapter:
   restconsumer:
     timeout: 5000
     url: "http://localhost:8080"
+    paths:
+      findByIdentificationNumber: "/api/v1/usuarios/{identificationNumber}"
+      validateToken: "/auth/api/v1/validate/{jwt}"
+      getAllUserInfoByEmail: "/api/v1/usuarios/email/{email}"
+
 resilience4j:
   circuitbreaker:
     instances:

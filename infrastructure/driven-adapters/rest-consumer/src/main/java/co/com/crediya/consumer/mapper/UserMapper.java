@@ -4,6 +4,8 @@ import co.com.crediya.consumer.dto.AuthUserResponseDTO;
 import co.com.crediya.model.user.User;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+
 @Component
 public class UserMapper {
 
@@ -16,7 +18,7 @@ public class UserMapper {
     }
 
     public User toUserFromExtraInfo(AuthUserResponseDTO dto) {
-        return User.fromExtraInfo(dto.name(), dto.lastName(), dto.baseSalary());
+        return User.fromExtraInfo(dto.name(), dto.lastName(), BigDecimal.valueOf(dto.baseSalary()));
     }
 }
 
