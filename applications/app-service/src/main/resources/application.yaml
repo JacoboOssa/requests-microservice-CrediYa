@@ -13,12 +13,12 @@ spring:
     include: null
 adapters:
   r2dbc:
-    host: "localhost"
-    port: 5432
-    database: "requests_db"
-    schema: "public"
-    username: "postgres"
-    password: "postgres123"
+    host: ${DB_HOST:postgres}
+    port: ${DB_PORT:5432}
+    database: ${DB_NAME:requests_db}
+    schema: ${DB_SCHEMA:public}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres123}
 management:
   endpoints:
     web:
@@ -36,7 +36,7 @@ cors:
 adapter:
   restconsumer:
     timeout: 5000
-    url: "http://localhost:8080"
+    url: ${ADAPTER_RESTCONSUMER_URL:http://localhost:8080}
     paths:
       findByIdentificationNumber: "/api/v1/usuarios/{identificationNumber}"
       validateToken: "/auth/api/v1/validate/{jwt}"
