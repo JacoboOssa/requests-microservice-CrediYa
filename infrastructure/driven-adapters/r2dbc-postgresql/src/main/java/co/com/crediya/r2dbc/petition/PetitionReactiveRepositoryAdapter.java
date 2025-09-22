@@ -73,4 +73,15 @@ public class PetitionReactiveRepositoryAdapter extends ReactiveAdapterOperations
                 .map(petitionMapper::toDomain);
     }
 
+    @Override
+    public Mono<Petition> updatePetitionStatus(String petitionId, String statusId) {
+        return repository.findById(petitionId)
+                .flatMap(entity -> {
+                    entity.setStatusId(statusId);
+                    return repository.save(entity);
+                })
+                .map(petitionMapper::toModel);
+    }
+
+
 }

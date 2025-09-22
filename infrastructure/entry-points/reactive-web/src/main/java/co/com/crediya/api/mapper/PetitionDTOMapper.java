@@ -4,6 +4,7 @@ import co.com.crediya.api.dto.request.CreatePetitionDTO;
 import co.com.crediya.api.dto.response.PetitionResponseDTO;
 import co.com.crediya.model.loantype.LoanType;
 import co.com.crediya.model.petition.Petition;
+import co.com.crediya.model.status.Status;
 import org.mapstruct.*;
 
 @Mapper(
@@ -22,6 +23,15 @@ public interface PetitionDTOMapper {
     default LoanType mapLoanType(CreatePetitionDTO dto) {
         return LoanType.builder()
                 .name(dto.loanTypeName())
+                .build();
+    }
+
+    default Status toStatus(String statusName) {
+        if (statusName == null || statusName.isEmpty()) {
+            return null;
+        }
+        return Status.builder()
+                .name(statusName)
                 .build();
     }
 
