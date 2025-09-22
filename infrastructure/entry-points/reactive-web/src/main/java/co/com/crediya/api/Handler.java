@@ -1,6 +1,7 @@
 package co.com.crediya.api;
 
 import co.com.crediya.api.dto.request.CreatePetitionDTO;
+import co.com.crediya.api.dto.request.UpdateStatusPetitionDTO;
 import co.com.crediya.api.mapper.PetitionDTOMapper;
 import co.com.crediya.api.validator.PetitionValidator;
 import co.com.crediya.model.petition.Petition;
@@ -73,6 +74,28 @@ public class Handler {
                 .doOnError(error -> log.error("Error processing petitions: {}", error.getMessage()))
                 .flatMap(petitions -> ServerResponse.ok().bodyValue(petitions));
     }
+
+    public Mono<ServerResponse> updatePetitionStatus(ServerRequest request) {
+        String petitionId = request.pathVariable("id");
+        String token = request.headers().firstHeader(AUTH_HEADER);
+
+        return request.bodyToMono(UpdateStatusPetitionDTO.class)
+                .flatMap(petitionValidator::validate)
+                .flatMap(dto -> {
+                    Petition petition = new Petition();
+                    petition.setId(petitionId);
+                    petition.setStatus(petitionDTOMapper.toStatus(dto.status()));
+
+                    return petitionUseCase.updatePetition(petition, token);
+                })
+                .doOnNext(updatedPetition -> log.info("Petition updated successfully: {}", updatedPetition.getId()))
+                .map(petitionDTOMapper::toPetitionResponseDTO)
+                .flatMap(responseDTO -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(responseDTO))
+                .doOnError(error -> log.error("Error updating petition status: {}", error.getMessage()));
+    }
+
 
 
 

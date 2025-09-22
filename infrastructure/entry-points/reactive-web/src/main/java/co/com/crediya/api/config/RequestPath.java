@@ -10,4 +10,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class RequestPath {
     private String request;
     private String getAllRequests;
+    private String updateRequestStatus;
 }

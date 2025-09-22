@@ -6,6 +6,7 @@ import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.loantype.LoanType;
 import co.com.crediya.model.loantype.gateways.LoanTypeRepository;
+import co.com.crediya.model.notificationmessage.gateways.NotificationMessageRepository;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.model.petition.gateways.PetitionRepository;
 import co.com.crediya.model.status.Status;
@@ -13,6 +14,7 @@ import co.com.crediya.model.status.gateways.StatusRepository;
 import co.com.crediya.model.user.Role;
 import co.com.crediya.model.user.User;
 import co.com.crediya.model.user.gateways.UserRepository;
+import co.com.crediya.usecase.dto.PetitionSqsMessage;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -30,6 +32,7 @@ public class PetitionUseCase {
     private final LoanTypeRepository loanTypeRepository;
     private final UserRepository userRepository;
     private final StatusRepository statusRepository;
+    private final NotificationMessageRepository notificationMessageRepository;
 
     public Mono<Petition> registerPetition(Petition petition, String identificationNumber, String token) {
         return validateAndGetUser(identificationNumber, token)
@@ -44,6 +47,34 @@ public class PetitionUseCase {
         return validateAndGetUserRole(token, Role.ROLE_ASESOR.name())
                 .thenMany(fetchPetitionsWithDetails(statuses, page, size, token));
     }
+
+    public Mono<Petition> updatePetition(Petition petition, String token) {
+        return validateAndGetUserRole(token, Role.ROLE_ASESOR.name())
+                .flatMap(user -> petitionRepository.findById(petition.getId())
+                        .switchIfEmpty(Mono.error(new BusinessException(BusinessException.PETITION_NOT_FOUND)))
+                )
+                .flatMap(existingPetition -> statusRepository.getStatusByName(petition.getStatus().getName())
+                        .switchIfEmpty(Mono.error(new BusinessException(BusinessException.STATUS_NOT_FOUND)))
+                        .flatMap(status ->
+                                petitionRepository.updatePetitionStatus(existingPetition.getId(), status.getId())
+                                        .flatMap(updatedPetition -> loanTypeRepository.findById(updatedPetition.getLoanType().getId())
+                                                .flatMap(loanType -> {
+                                                    updatedPetition.setStatus(status);
+                                                    updatedPetition.setLoanType(loanType);
+
+                                                    // Mapear y enviar a SQS
+                                                    PetitionSqsMessage sqsMessage = toSqsMessage(updatedPetition);
+                                                    String messageJson = sqsMessage.toJson();
+
+                                                    return notificationMessageRepository.sendRequestStatusNotification(messageJson)
+                                                            .thenReturn(updatedPetition);
+                                                })
+                                        )
+                        )
+                );
+    }
+
+
 
 
     private Mono<User> validateAndGetUser(String identificationNumber, String token) {
@@ -153,6 +184,18 @@ public class PetitionUseCase {
                 .loanTypeName(loanType.getName())
                 .statusName(status.getName())
                 .totalMonthlyDebtApproved(totalMonthlyDebt)
+                .build();
+    }
+
+    private PetitionSqsMessage toSqsMessage(Petition petition) {
+        return PetitionSqsMessage.builder()
+                .petitionId(petition.getId())
+                .email(petition.getEmail())
+                .statusName(petition.getStatus().getName())
+                .statusDescription(petition.getStatus().getDescription())
+                .loanTypeName(petition.getLoanType().getName())
+                .amount(petition.getAmount())
+                .term(petition.getTerm())
                 .build();
     }
 }
