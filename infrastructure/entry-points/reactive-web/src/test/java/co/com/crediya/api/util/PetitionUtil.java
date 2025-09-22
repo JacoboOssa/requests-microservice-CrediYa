@@ -2,6 +2,7 @@ package co.com.crediya.api.util;
 
 import co.com.crediya.api.dto.request.CreatePetitionDTO;
 import co.com.crediya.api.dto.response.PetitionResponseDTO;
+import co.com.crediya.model.dto.ListPetitionsDTO;
 import co.com.crediya.model.petition.Petition;
 
 import java.math.BigDecimal;
@@ -34,6 +35,21 @@ public class PetitionUtil {
                 .email("jaco@gmail.com")
                 .status(StatusUtil.statusResponseDTO())
                 .loanType(LoanTypeUtil.loanTypeResponseDTO())
+                .build();
+    }
+
+    public static ListPetitionsDTO listPetitionsDTO(){
+        return ListPetitionsDTO.builder()
+                .id("1")
+                .email("mq@gmail.com")
+                .name("Angela")
+                .lastName("Guarnizo")
+                .baseSalary(BigDecimal.valueOf(3450000))
+                .term(12)
+                .amount(BigDecimal.valueOf(5000000))
+                .loanTypeName("Personal")
+                .statusName("MANUAL_REVISION")
+                .totalMonthlyDebtApproved(BigDecimal.ZERO)
                 .build();
     }
 }

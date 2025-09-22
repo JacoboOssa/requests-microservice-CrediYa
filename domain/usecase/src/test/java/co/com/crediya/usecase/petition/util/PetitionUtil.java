@@ -16,4 +16,15 @@ public class PetitionUtil {
                 .loanType(LoanTypeUtil.loanType())
                 .build();
     }
+
+    public static Petition petition2() {
+        return Petition.builder()
+                .id("2")
+                .term(24)
+                .amount(BigDecimal.valueOf(5000000))
+                .email("asesor@gmail.com")
+                .status(StatusUtil.status())
+                .loanType(LoanTypeUtil.loanType())
+                .build();
+    }
 }

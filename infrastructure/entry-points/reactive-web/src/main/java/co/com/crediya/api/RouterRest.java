@@ -5,11 +5,14 @@ import co.com.crediya.api.dto.request.CreatePetitionDTO;
 import co.com.crediya.api.dto.response.ErrorResponseDTO;
 import co.com.crediya.api.dto.response.PetitionResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springdoc.core.annotations.RouterOperation;
 import org.springdoc.core.annotations.RouterOperations;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
@@ -27,11 +31,11 @@ public class RouterRest {
 
     private final RequestPath requestPath;
     @Bean
-    @RouterOperations(
+    @RouterOperations({
             @RouterOperation(
                     path = "/api/v1/requests",
                     produces = MediaType.APPLICATION_JSON_VALUE,
-                    method = org.springframework.web.bind.annotation.RequestMethod.POST,
+                    method = RequestMethod.POST,
                     beanClass = Handler.class,
                     beanMethod = "savePetition",
                     operation = @Operation(
@@ -58,9 +62,65 @@ public class RouterRest {
                                     )
                             }
                     )
+            ),
+            @RouterOperation(
+                    path = "/api/v1/requests",
+                    produces = MediaType.APPLICATION_JSON_VALUE,
+                    method = RequestMethod.GET,
+                    beanClass = Handler.class,
+                    beanMethod = "getPetitions",
+                    operation = @Operation(
+                            summary = "Get Requests",
+                            operationId = "getPetitions",
+                            parameters = {
+                                    @Parameter(
+                                            name = "status",
+                                            description = "Filter by status (comma-separated values)",
+                                            required = false,
+                                            example = "PENDIENTE,RECHAZADA"
+                                    ),
+                                    @Parameter(
+                                            name = "page",
+                                            description = "Page number for pagination",
+                                            required = false,
+                                            example = "0"
+                                    ),
+                                    @Parameter(
+                                            name = "size",
+                                            description = "Number of items per page",
+                                            required = false,
+                                            example = "20"
+                                    )
+
+                            },
+                            responses = {
+                                    @ApiResponse(
+                                            responseCode = "200",
+                                            description = "Successful operation",
+                                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = PetitionResponseDTO.class))
+                                            )
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "401",
+                                            description = "Unauthorized",
+                                            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "403",
+                                            description = "Forbidden",
+                                            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "500",
+                                            description = "Internal server error",
+                                            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))
+                                    )
+                            }
+                    )
             )
-    )
+    })
     public RouterFunction<ServerResponse> routerFunction(Handler handler) {
-        return route(POST(requestPath.getRequest()), handler::savePetition);
+        return route(POST(requestPath.getRequest()), handler::savePetition)
+                .andRoute(GET(requestPath.getGetAllRequests()), handler::getPetitions);
     }
 }

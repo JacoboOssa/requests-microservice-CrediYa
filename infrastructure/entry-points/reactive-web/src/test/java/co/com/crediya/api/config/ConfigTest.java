@@ -23,7 +23,7 @@ import reactor.core.publisher.Mono;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests"})
+@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests","routes.paths.get-all-requests=/api/v1/requests"})
 @EnableConfigurationProperties(RequestPath.class)
 @ContextConfiguration(classes = {RouterRest.class, Handler.class})
 @WebFluxTest
@@ -47,7 +47,7 @@ class ConfigTest {
 
     @BeforeEach
     void setUp() {
-        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class))).thenReturn(Mono.just(PetitionUtil.petition()));
+        when(petitionUseCase.registerPetition(any(Petition.class), any(String.class), any(String.class))).thenReturn(Mono.just(PetitionUtil.petition()));
         when(petitionValidator.validate(any(CreatePetitionDTO.class))).thenReturn(Mono.just(PetitionUtil.createPetitionDTO()));
         when(petitionDTOMapper.toPetition(any(CreatePetitionDTO.class))).thenReturn(PetitionUtil.petition());
         when(petitionDTOMapper.toPetitionResponseDTO(any(Petition.class))).thenReturn(PetitionUtil.petitionResponseDTO());
@@ -59,6 +59,7 @@ class ConfigTest {
         String origin = "/api/v1/requests";
         webTestClient.post()
                 .uri(origin)
+                .header("Authorization", "Bearer validToken")
                 .bodyValue(PetitionUtil.createPetitionDTO())
                 .exchange()
                 .expectStatus().isOk()

@@ -15,8 +15,12 @@ public final class ErrorConstants {
     public static final String VALIDATION_ERROR = "Validation Error";
     public static final String BUSINESS_RULE_VIOLATION = "Business Rule Violation";
     public static final String INTERNAL_SERVER_ERROR = "Internal Server Error";
+    public static final String JWT_ERROR = "JWT Validation Error";
+    public static final String AUTHORIZATION_ERROR = "Authorization Error";
+
 
     public static final int STATUS_BAD_REQUEST = HttpStatus.BAD_REQUEST.value();
     public static final int STATUS_CONFLICT = HttpStatus.CONFLICT.value();
     public static final int STATUS_INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR.value();
+    public static final int STATUS_FORBIDDEN = HttpStatus.FORBIDDEN.value();
 }
