@@ -6,6 +6,7 @@ import co.com.crediya.api.mapper.PetitionDTOMapper;
 import co.com.crediya.api.validator.PetitionValidator;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.usecase.petition.PetitionUseCase;
+import co.com.crediya.usecase.petitionmessaging.PetitionMessagingUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -30,6 +31,7 @@ public class Handler {
 
 
     private final PetitionUseCase petitionUseCase;
+    private final PetitionMessagingUseCase petitionMessagingUseCase;
     private final PetitionValidator petitionValidator;
     private final PetitionDTOMapper petitionDTOMapper;
 
@@ -86,7 +88,7 @@ public class Handler {
                     petition.setId(petitionId);
                     petition.setStatus(petitionDTOMapper.toStatus(dto.status()));
 
-                    return petitionUseCase.updatePetition(petition, token);
+                    return petitionMessagingUseCase.updatePetition(petition, token);
                 })
                 .doOnNext(updatedPetition -> log.info("Petition updated successfully: {}", updatedPetition.getId()))
                 .map(petitionDTOMapper::toPetitionResponseDTO)
