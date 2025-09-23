@@ -42,11 +42,14 @@ adapter:
       validateToken: "/auth/api/v1/validate/{jwt}"
       getAllUserInfoByEmail: "/api/v1/usuarios/email/{email}"
   sqs:
-    region: ${AWS_REGION:us-east-2}
-    queueUrl: ${SQS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/058264169618/CrediYaQueue}
+    manual-review:
+      region: "${AWS_REGION:us-east-2}"
+      queueUrl: "${SQS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/058264169618/CrediYaQueue}"
+    automatic-review:
+      region: "${AWS_REGION:us-east-2}"
+      queueUrl: "${SQS_AUTOMATIC_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/058264169618/debtAutomaticSQS}"
     accessKeyId: "${AWS_ACCESS_KEY_ID}"
     secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
-
 resilience4j:
   circuitbreaker:
     instances:
@@ -73,3 +76,11 @@ routes:
     request: "/api/v1/requests"
     getAllRequests: "/api/v1/requests"
     updateRequestStatus: "/api/v1/requests/{id}/status"
+entrypoint:
+  sqs:
+    region: "${AWS_REGION:us-east-2}"
+    queueUrl: "https://sqs.us-east-2.amazonaws.com/058264169618/loanStatusAutomaticValidatorSQS"
+    waitTimeSeconds: 20
+    maxNumberOfMessages: 10
+    visibilityTimeoutSeconds: 10
+    numberOfThreads: 1
