@@ -116,6 +116,52 @@ public class RouterRest {
                                     )
                             }
                     )
+            ),
+            @RouterOperation(
+                    path = "/api/v1/requests/{id}/status",
+                    produces = MediaType.APPLICATION_JSON_VALUE,
+                    method = RequestMethod.PUT,
+                    beanClass = Handler.class,
+                    beanMethod = "updatePetitionStatus",
+                    operation = @Operation(
+                            summary = "Update Request Status",
+                            operationId = "updatePetitionStatus",
+                            parameters = {
+                                    @Parameter(
+                                            name = "id",
+                                            description = "ID of the request to update",
+                                            required = true,
+                                            example = "123e4567-e89b-12d3-a456-426614174000"
+                                    )
+                            },
+                            requestBody = @RequestBody(
+                                    content = @Content(schema = @Schema(implementation = String.class)),
+                                    description = "New status value (e.g., 'APROBADA', 'RECHAZADA')",
+                                    required = true
+                            ),
+                            responses = {
+                                    @ApiResponse(
+                                            responseCode = "200",
+                                            description = "Successful operation",
+                                            content = @Content(schema = @Schema(implementation = PetitionResponseDTO.class))
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "400",
+                                            description = "Invalid input",
+                                            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "404",
+                                            description = "Request not found",
+                                            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))
+                                    ),
+                                    @ApiResponse(
+                                            responseCode = "500",
+                                            description = "Internal server error",
+                                            content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))
+                                    )
+                            }
+                    )
             )
     })
     public RouterFunction<ServerResponse> routerFunction(Handler handler) {
