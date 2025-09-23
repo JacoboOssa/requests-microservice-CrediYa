@@ -1,9 +1,8 @@
-package co.com.crediya.sqs.sender;
+package co.com.crediya.sqs.sender.manualreview;
 
 import co.com.crediya.model.notificationmessage.gateways.NotificationMessageRepository;
-import co.com.crediya.sqs.sender.config.SQSSenderProperties;
+import co.com.crediya.sqs.sender.manualreview.config.SQSSenderProperties;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -14,7 +13,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class SQSSender implements NotificationMessageRepository {
+public class SQSSenderManualQueue implements NotificationMessageRepository {
     private final SQSSenderProperties properties;
     private final SqsAsyncClient client;
 
@@ -22,6 +21,7 @@ public class SQSSender implements NotificationMessageRepository {
         return Mono.fromCallable(() -> buildRequest(message))
                 .flatMap(request -> Mono.fromFuture(client.sendMessage(request)))
                 .doOnNext(response -> log.info("Message sent {}", response.messageId()))
+                .doOnError(throwable -> log.error("Error sending message", throwable))
                 .map(SendMessageResponse::messageId);
     }
 
