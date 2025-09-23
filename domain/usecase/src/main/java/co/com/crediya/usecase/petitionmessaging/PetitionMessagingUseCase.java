@@ -6,10 +6,11 @@ import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.notificationmessage.gateways.NotificationMessageRepository;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.model.petition.gateways.PetitionRepository;
+import co.com.crediya.model.report.gateways.ReportRepository;
 import co.com.crediya.model.user.Role;
 import co.com.crediya.model.user.User;
 import co.com.crediya.usecase.auth.AuthUseCase;
-import co.com.crediya.usecase.dto.PetitionSqsMessage;
+import co.com.crediya.usecase.dto.ReportSqsMessage;
 import co.com.crediya.usecase.mapper.PetitionMapper;
 import co.com.crediya.usecase.petitionvalidator.PetitionValidatorUseCase;
 import lombok.RequiredArgsConstructor;
@@ -26,19 +27,30 @@ public class PetitionMessagingUseCase {
     private final PetitionMapper petitionMapper;
     private final NotificationMessageRepository notificationMessageRepository;
     private final DebtCapacityRepository debtCapacityRepository;
+    private final ReportRepository reportRepository;
 
 
     public Mono<Void> updatePetitionStatusFromSQS(String petitionId, String statusName) {
         return petitionRepository.findById(petitionId)
                 .switchIfEmpty(Mono.error(new BusinessException(BusinessException.PETITION_NOT_FOUND)))
-                .flatMap(existingPetition -> petitionValidatorUseCase.getStatusByName(statusName)
-                        .switchIfEmpty(Mono.error(new BusinessException(BusinessException.STATUS_NOT_FOUND)))
-                        .flatMap(status ->
-                                petitionRepository.updatePetitionStatus(existingPetition.getId(), status.getId())
-                                        .then()
-                        )
+                .flatMap(existingPetition ->
+                        petitionValidatorUseCase.getStatusByName(statusName)
+                                .switchIfEmpty(Mono.error(new BusinessException(BusinessException.STATUS_NOT_FOUND)))
+                                .flatMap(status ->
+                                        petitionRepository.updatePetitionStatus(existingPetition.getId(), status.getId())
+                                                .then(Mono.defer(() -> {
+                                                    if ("APROBADA".equalsIgnoreCase(statusName)) {
+                                                        ReportSqsMessage sqsMessage = petitionMapper.toReportSqsMessage(existingPetition);
+
+                                                        String messageJson = sqsMessage.toJson();
+                                                        return reportRepository.addNewPetitionReport(messageJson).then();
+                                                    }
+                                                    return Mono.empty();
+                                                }))
+                                )
                 );
     }
+
 
     public Mono<Petition> updatePetition(Petition petition, String token) {
         return authUseCase.validateAndGetUserRole(token, Role.ROLE_ASESOR.name())
@@ -54,11 +66,18 @@ public class PetitionMessagingUseCase {
                                                     updatedPetition.setStatus(status);
                                                     updatedPetition.setLoanType(loanType);
 
-                                                    PetitionSqsMessage sqsMessage = petitionMapper.toSqsMessage(updatedPetition);
+                                                    ReportSqsMessage sqsMessage = petitionMapper.toReportSqsMessage(updatedPetition);
                                                     String messageJson = sqsMessage.toJson();
 
                                                     return notificationMessageRepository.sendRequestStatusNotification(messageJson)
+                                                            .then(Mono.defer(() -> {
+                                                                if ("APROBADA".equalsIgnoreCase(status.getName())) {
+                                                                    return reportRepository.addNewPetitionReport(messageJson).then();
+                                                                }
+                                                                return Mono.empty();
+                                                            }))
                                                             .thenReturn(updatedPetition);
+
                                                 })
                                         )
                         )

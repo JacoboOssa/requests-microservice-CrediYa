@@ -8,6 +8,7 @@ import co.com.crediya.model.petition.Petition;
 import co.com.crediya.model.status.Status;
 import co.com.crediya.model.user.User;
 import co.com.crediya.usecase.dto.PetitionSqsMessage;
+import co.com.crediya.usecase.dto.ReportSqsMessage;
 import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
@@ -69,6 +70,14 @@ public class PetitionMapper {
                 .amount(petition.getAmount())
                 .term(petition.getTerm())
                 .interestRate(petition.getLoanType().getInterestRate())
+                .build();
+    }
+
+    public ReportSqsMessage toReportSqsMessage(Petition petition) {
+        return ReportSqsMessage.builder()
+                .petitionId(petition.getId())
+                .email(petition.getEmail())
+                .amount(petition.getAmount())
                 .build();
     }
 }
