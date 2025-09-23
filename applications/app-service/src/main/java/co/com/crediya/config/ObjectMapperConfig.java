@@ -1,5 +1,6 @@
 package co.com.crediya.config;
 
+import co.com.crediya.usecase.mapper.PetitionMapper;
 import org.reactivecommons.utils.ObjectMapper;
 import org.reactivecommons.utils.ObjectMapperImp;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +12,11 @@ public class ObjectMapperConfig {
     @Bean
     public ObjectMapper objectMapper() {
         return new ObjectMapperImp();
+    }
+
+    @Bean
+    public PetitionMapper petitionMapper() {
+        return new PetitionMapper();
     }
 
 }

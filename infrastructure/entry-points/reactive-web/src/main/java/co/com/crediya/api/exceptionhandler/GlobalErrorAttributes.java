@@ -1,6 +1,7 @@
 package co.com.crediya.api.exceptionhandler;
 
 import co.com.crediya.model.exception.AuthorizationException;
+import co.com.crediya.model.exception.AwsException;
 import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
 import jakarta.validation.ConstraintViolationException;
@@ -38,6 +39,10 @@ public class GlobalErrorAttributes extends DefaultErrorAttributes {
         } else if (error instanceof AuthorizationException) {
             errorAttributes.put(ATTRIBUTE_ERROR, AUTHORIZATION_ERROR);
             errorAttributes.put(ATTRIBUTE_STATUS, STATUS_FORBIDDEN);
+
+        } else if (error instanceof AwsException) {
+            errorAttributes.put(ATTRIBUTE_ERROR, AWS_ERROR);
+            errorAttributes.put(ATTRIBUTE_STATUS, SERVICE_UNAVAILABLE);
 
         } else {
             errorAttributes.put(ATTRIBUTE_ERROR, INTERNAL_SERVER_ERROR);

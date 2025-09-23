@@ -69,8 +69,8 @@ public class PetitionReactiveRepositoryAdapter extends ReactiveAdapterOperations
 
     @Override
     public Flux<Petition> findApprovedByEmail(String email) {
-        return repository.findApprovedByEmail("APROBADA")
-                .map(petitionMapper::toDomain);
+        return repository.findApprovedByEmail(email)
+                .map(petitionMapper::toModel);
     }
 
     @Override
