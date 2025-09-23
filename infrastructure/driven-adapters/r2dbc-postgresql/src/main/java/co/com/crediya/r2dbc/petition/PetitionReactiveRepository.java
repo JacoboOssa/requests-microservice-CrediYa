@@ -17,9 +17,10 @@ public interface PetitionReactiveRepository extends ReactiveCrudRepository<Petit
     """)
     Flux<PetitionEntity> findByStatuses(List<String> statuses);
     @Query("""
-        SELECT p.*
-        FROM petitions p
-        JOIN status s ON p.status_id = s.id
-        WHERE p.email = :email AND s.name = 'APROBADA'
+    SELECT p.*, l.*  
+    FROM petitions p  
+    JOIN status s ON p.status_id = s.id  
+    JOIN loan_types l ON p.loan_type_id = l.id  
+    WHERE p.email = :email AND s.name = 'APROBADA'
     """)
     Flux<PetitionEntity> findApprovedByEmail(String email);}
