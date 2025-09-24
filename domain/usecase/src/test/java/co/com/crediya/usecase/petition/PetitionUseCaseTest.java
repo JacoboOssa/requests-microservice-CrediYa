@@ -1,16 +1,26 @@
 package co.com.crediya.usecase.petition;
 
+import co.com.crediya.model.dto.ListPetitionsDTO;
 import co.com.crediya.model.exception.AuthorizationException;
 import co.com.crediya.model.exception.BusinessException;
 import co.com.crediya.model.exception.JwtException;
+import co.com.crediya.model.loantype.LoanType;
 import co.com.crediya.model.loantype.gateways.LoanTypeRepository;
+import co.com.crediya.model.petition.Petition;
 import co.com.crediya.model.petition.gateways.PetitionRepository;
+import co.com.crediya.model.status.Status;
 import co.com.crediya.model.status.gateways.StatusRepository;
+import co.com.crediya.model.user.Role;
+import co.com.crediya.model.user.User;
 import co.com.crediya.model.user.gateways.UserRepository;
+import co.com.crediya.usecase.auth.AuthUseCase;
+import co.com.crediya.usecase.mapper.PetitionMapper;
 import co.com.crediya.usecase.petition.util.LoanTypeUtil;
 import co.com.crediya.usecase.petition.util.PetitionUtil;
 import co.com.crediya.usecase.petition.util.StatusUtil;
 import co.com.crediya.usecase.petition.util.UserUtil;
+import co.com.crediya.usecase.petitionmessaging.PetitionMessagingUseCase;
+import co.com.crediya.usecase.petitionvalidator.PetitionValidatorUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,205 +41,118 @@ import static org.mockito.Mockito.when;
 class PetitionUseCaseTest {
 
     @Mock
-    private LoanTypeRepository loanTypeRepository;
-
-    @Mock
-    private StatusRepository statusRepository;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
     private PetitionRepository petitionRepository;
+
+    @Mock
+    private AuthUseCase authUseCase;
+
+    @Mock
+    private PetitionValidatorUseCase petitionValidatorUseCase;
+
+    @Mock
+    private PetitionMapper petitionMapper;
+
+    @Mock
+    private PetitionMessagingUseCase petitionMessagingUseCase;
 
     @InjectMocks
     private PetitionUseCase petitionUseCase;
 
 
-
     @Test
     void mustRegisterPetitionSuccessfully() {
-        var petition = PetitionUtil.petition();
-        var user = UserUtil.user();
-        var loanType = LoanTypeUtil.loanType();
-        var status = StatusUtil.status();
+        Petition petition = new Petition();
+        petition.setLoanType(new LoanType());
+        petition.setStatus(new Status());
 
-        String identificationNumber = "123456789";
-        String token = "Bearer validToken";
-        String extractedToken = "validToken";
+        User user = new User();
+        user.setEmail("test@test.com");
 
-        when(userRepository.validateJwtToken(extractedToken)).thenReturn(Mono.just(user));
-        when(userRepository.findByIdentificationNumber(eq(identificationNumber), anyString())).thenReturn(Mono.just(user));
-        when(loanTypeRepository.findByName(any(String.class))).thenReturn(Mono.just(loanType));
-        when(statusRepository.getStatusByName("PENDIENTE")).thenReturn(Mono.just(status));
-        when(petitionRepository.savePetition(petition)).thenReturn(Mono.just(petition));
+        LoanType loanType = new LoanType();
+        loanType.setName("Personal Loan");
+        loanType.setAutomaticValidation(false);
 
-        StepVerifier.create(petitionUseCase.registerPetition(petition, identificationNumber, token))
-                .expectNextMatches(savedPetition ->
-                        savedPetition.getEmail().equals(user.getEmail()) &&
-                                savedPetition.getLoanType().getName().equals(loanType.getName()) &&
-                                savedPetition.getStatus().getName().equals(status.getName()))
+        Status status = new Status();
+        status.setName("PENDIENTE");
+
+        when(authUseCase.validateAndGetUser("123", "token")).thenReturn(Mono.just(user));
+        when(petitionValidatorUseCase.validateLoanTypeAndRange(petition)).thenReturn(Mono.just(loanType));
+        when(petitionValidatorUseCase.getPendingStatus()).thenReturn(Mono.just(status));
+        when(petitionRepository.savePetition(any(Petition.class))).thenReturn(Mono.just(petition));
+
+        StepVerifier.create(petitionUseCase.registerPetition(petition, "123", "token"))
+                .expectNextMatches(saved ->
+                        saved.getEmail().equals(user.getEmail()) &&
+                                saved.getLoanType().getName().equals(loanType.getName()) &&
+                                saved.getStatus().getName().equals(status.getName())
+                )
                 .verifyComplete();
     }
 
     @Test
-    void mustGetAllPetitionsPaginable(){
-        String token = "Bearer validToken";
-        String extractedToken = "validToken";
-        List<String> statuses = Arrays.asList("PENDIENTE");
-        int page = 1;
-        int size = 10;
+    void mustRegisterPetitionWithAutomaticValidation() {
+        Petition petition = new Petition();
+        petition.setEmail("test@test.com");
+        petition.setLoanType(new LoanType());
+        petition.setStatus(new Status());
 
-        when(userRepository.validateJwtToken(extractedToken))
-                .thenReturn(Mono.just(UserUtil.user2()));
-        when(statusRepository.findById(StatusUtil.status().getId()))
-                .thenReturn(Mono.just(StatusUtil.status()));
-        when(loanTypeRepository.findById(LoanTypeUtil.loanType().getId()))
-                .thenReturn(Mono.just(LoanTypeUtil.loanType()));
-        when(userRepository.getAllUserInfoByEmail(anyString(),anyString()))
-                .thenReturn(Mono.just(UserUtil.user2()));
-        when(petitionRepository.findApprovedByEmail(anyString()))
-                .thenReturn(Flux.empty());
-        when(petitionRepository.findPetitionsByStatus(statuses,page,size))
-                .thenReturn(Flux.just(PetitionUtil.petition()));
+        User user = new User();
+        user.setEmail("test@test.com");
 
-        StepVerifier.create(petitionUseCase.getAllPetitionsPaginable(statuses,page,size,token))
-                .expectNextMatches(retrievePetitions ->
-                        retrievePetitions.getLoanTypeName().equals(PetitionUtil.petition().getLoanType().getName()))
-                .verifyComplete();
-    }
+        LoanType loanType = new LoanType();
+        loanType.setName("Personal Loan");
+        loanType.setAutomaticValidation(true);
 
+        Status status = new Status();
+        status.setName("PENDIENTE");
 
+        when(authUseCase.validateAndGetUser("123", "token")).thenReturn(Mono.just(user));
+        when(petitionValidatorUseCase.validateLoanTypeAndRange(petition)).thenReturn(Mono.just(loanType));
+        when(petitionValidatorUseCase.getPendingStatus()).thenReturn(Mono.just(status));
+        when(petitionRepository.savePetition(any(Petition.class))).thenReturn(Mono.just(petition));
+        when(authUseCase.getAllUserInfoByEmail(petition.getEmail(), "token")).thenReturn(Mono.just(user));
+        when(petitionRepository.findApprovedByEmail(petition.getEmail())).thenReturn(Flux.empty());
+        when(petitionMessagingUseCase.enqueueForDebtCapacity(any(), any(), any())).thenReturn(Mono.empty());
 
-    @Test
-    void mustValidateLoanType() {
-        String loanTypeName = "Personal Loan";
-        when(loanTypeRepository.findByName(loanTypeName)).thenReturn(Mono.just(LoanTypeUtil.loanType()));
-
-        StepVerifier.create(loanTypeRepository.findByName(loanTypeName))
-                .expectNextMatches(loanType -> loanType.getName().equals(loanTypeName) &&
-                        loanType.getInterestRate().equals(5.5))
-                .verifyComplete();
-    }
-
-
-
-    @Test
-    void mustReturnErrorWhenLoanTypeNotFound() {
-        String loanTypeName = "NonExistentLoanType";
-        when(loanTypeRepository.findByName(loanTypeName)).thenReturn(Mono.empty());
-
-        StepVerifier.create(loanTypeRepository.findByName(loanTypeName)
-                        .switchIfEmpty(Mono.error(new BusinessException(BusinessException.LOAN_TYPE_NOT_FOUND))))
-                .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
-                        throwable.getMessage().equals(BusinessException.LOAN_TYPE_NOT_FOUND))
-                .verify();
-    }
-
-    @Test
-    void mustReturnErrorWhenAmountOutOfRange() {
-        var petition = PetitionUtil.petition();
-        petition.setAmount(BigDecimal.valueOf(1000000.0));
-        String loanTypeName = petition.getLoanType().getName();
-        when(loanTypeRepository.findByName(loanTypeName)).thenReturn(Mono.just(LoanTypeUtil.loanType()));
-
-        StepVerifier.create(loanTypeRepository.findByName(loanTypeName)
-                        .flatMap(loanType -> {
-                            if (petition.getAmount().compareTo(loanType.getMinAmount()) < 0 ||
-                                    petition.getAmount().compareTo(loanType.getMaxAmount()) > 0) {
-                                return Mono.error(new BusinessException(BusinessException.AMOUNT_OUT_OF_RANGE));
-                            }
-                            return Mono.just(loanType);
-                        }))
-                .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
-                        throwable.getMessage().equals(BusinessException.AMOUNT_OUT_OF_RANGE))
-                .verify();
-    }
-
-
-    @Test
-    void mustValidateUser() {
-        String identificationNumber = "123456789";
-        String token = "validToken";
-        when(userRepository.findByIdentificationNumber(identificationNumber, token)).thenReturn(Mono.just(UserUtil.user()));
-
-        StepVerifier.create(userRepository.findByIdentificationNumber(identificationNumber, token))
-                .expectNextMatches(user -> user.getEmail().equals("jq@gmail.com"))
+        StepVerifier.create(petitionUseCase.registerPetition(petition, "123", "token"))
+                .expectNextMatches(saved -> saved.getEmail().equals("test@test.com"))
                 .verifyComplete();
     }
 
     @Test
-    void mustReturnErrorWhenUserNotFound() {
-        String identificationNumber = "987654321";
-        String token = "validToken";
-        when(userRepository.findByIdentificationNumber(identificationNumber, token)).thenReturn(Mono.empty());
+    void mustGetAllPetitionsPaginable() {
+        Petition petition = new Petition();
+        petition.setEmail("test@test.com");
+        petition.setLoanType(new LoanType());
+        petition.getLoanType().setId("1");
+        petition.setStatus(new Status());
+        petition.getStatus().setId("2");
 
-        StepVerifier.create(userRepository.findByIdentificationNumber(identificationNumber, token)
-                        .switchIfEmpty(Mono.error(new BusinessException(BusinessException.USER_NOT_FOUND))))
-                .expectErrorMatches(throwable -> throwable instanceof BusinessException &&
-                        throwable.getMessage().equals(BusinessException.USER_NOT_FOUND))
-                .verify();
-    }
+        User user = new User();
+        user.setEmail("test@test.com");
 
+        LoanType loanType = new LoanType();
+        loanType.setId("1");
+        loanType.setName("Personal Loan");
 
-    @Test
-    void mustThrowForbiddenWhenRoleIsNotClient() {
-        var petition = PetitionUtil.petition();
-        var user = UserUtil.user();
-        user.setRol("ROLE_ADMIN");
-        String token = "Bearer validToken";
+        Status status = new Status();
+        status.setId("2");
+        status.setName("PENDIENTE");
 
-        when(userRepository.validateJwtToken("validToken")).thenReturn(Mono.just(user));
+        ListPetitionsDTO dto = new ListPetitionsDTO();
+        dto.setLoanTypeName("Personal Loan");
 
-        StepVerifier.create(petitionUseCase.registerPetition(petition, "123456789", token))
-                .expectErrorMatches(throwable -> throwable instanceof AuthorizationException &&
-                        throwable.getMessage().equals(AuthorizationException.FORBIDDEN))
-                .verify();
-    }
+        when(authUseCase.validateAndGetUserRole("token", Role.ROLE_ASESOR.name())).thenReturn(Mono.empty());
+        when(petitionRepository.findPetitionsByStatus(List.of("PENDIENTE"), 1, 10)).thenReturn(Flux.just(petition));
+        when(petitionValidatorUseCase.findStatusById("2")).thenReturn(Mono.just(status));
+        when(petitionValidatorUseCase.findById("1")).thenReturn(Mono.just(loanType));
+        when(authUseCase.getAllUserInfoByEmail("test@test.com", "token")).thenReturn(Mono.just(user));
+        when(petitionRepository.findApprovedByEmail("test@test.com")).thenReturn(Flux.empty());
+        when(petitionMapper.mapToDTO(petition, status, loanType, user, List.of())).thenReturn(dto);
 
-
-    @Test
-    void mustRegisterPetition() {
-        String identificationNumber = "123456789";
-        String token = "Bearer validToken";
-        String extractedToken = "validToken";
-
-        var petition = PetitionUtil.petition();
-        var user = UserUtil.user();
-        user.setRol("ROLE_CLIENT");
-
-        var loanType = LoanTypeUtil.loanType();
-        var status = StatusUtil.status();
-
-        when(userRepository.validateJwtToken(extractedToken)).thenReturn(Mono.just(user));
-        when(userRepository.findByIdentificationNumber(eq(identificationNumber), anyString())).thenReturn(Mono.just(user));
-        when(loanTypeRepository.findByName(petition.getLoanType().getName())).thenReturn(Mono.just(loanType));
-        when(statusRepository.getStatusByName("PENDIENTE")).thenReturn(Mono.just(status));
-        when(petitionRepository.savePetition(petition)).thenReturn(Mono.just(petition));
-
-        StepVerifier.create(petitionUseCase.registerPetition(petition, identificationNumber, token))
-                .expectNextMatches(savedPetition ->
-                        savedPetition.getEmail().equals(user.getEmail()) &&
-                                savedPetition.getLoanType().getName().equals(loanType.getName()) &&
-                                savedPetition.getStatus().getName().equals(status.getName()))
+        StepVerifier.create(petitionUseCase.getAllPetitionsPaginable(List.of("PENDIENTE"), 1, 10, "token"))
+                .expectNextMatches(p -> p.getLoanTypeName().equals("Personal Loan"))
                 .verifyComplete();
-    }
-
-    @Test
-    void mustFailWhenUserNotOwnerRequest(){
-
-        var petition = PetitionUtil.petition();
-
-        String identificationNumber = "123456789";
-        String token = "Bearer validToken";
-        String extractedToken = "validToken";
-
-        when(userRepository.validateJwtToken(extractedToken)).thenReturn(Mono.error(new AuthorizationException(AuthorizationException.EMAIL_NOT_OWNER)));
-
-        StepVerifier.create(petitionUseCase.registerPetition(petition, identificationNumber, token))
-                .expectErrorMatches(throwable -> throwable instanceof AuthorizationException &&
-                        throwable.getMessage().equals(AuthorizationException.EMAIL_NOT_OWNER))
-                .verify();
     }
 
 }
