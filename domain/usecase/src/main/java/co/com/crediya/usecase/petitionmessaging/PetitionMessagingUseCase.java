@@ -10,6 +10,7 @@ import co.com.crediya.model.report.gateways.ReportRepository;
 import co.com.crediya.model.user.Role;
 import co.com.crediya.model.user.User;
 import co.com.crediya.usecase.auth.AuthUseCase;
+import co.com.crediya.usecase.dto.PetitionSqsMessage;
 import co.com.crediya.usecase.dto.ReportSqsMessage;
 import co.com.crediya.usecase.mapper.PetitionMapper;
 import co.com.crediya.usecase.petitionvalidator.PetitionValidatorUseCase;
@@ -66,13 +67,16 @@ public class PetitionMessagingUseCase {
                                                     updatedPetition.setStatus(status);
                                                     updatedPetition.setLoanType(loanType);
 
-                                                    ReportSqsMessage sqsMessage = petitionMapper.toReportSqsMessage(updatedPetition);
-                                                    String messageJson = sqsMessage.toJson();
+                                                    PetitionSqsMessage notificationSqsMessage = petitionMapper.toSqsMessage(updatedPetition);
+                                                    String notificationMessageJson = notificationSqsMessage.toJson();
 
-                                                    return notificationMessageRepository.sendRequestStatusNotification(messageJson)
+                                                    ReportSqsMessage reportSqsMessage = petitionMapper.toReportSqsMessage(updatedPetition);
+                                                    String reportSqsMessageJson = reportSqsMessage.toJson();
+
+                                                    return notificationMessageRepository.sendRequestStatusNotification(notificationMessageJson)
                                                             .then(Mono.defer(() -> {
                                                                 if ("APROBADA".equalsIgnoreCase(status.getName())) {
-                                                                    return reportRepository.addNewPetitionReport(messageJson).then();
+                                                                    return reportRepository.addNewPetitionReport(reportSqsMessageJson).then();
                                                                 }
                                                                 return Mono.empty();
                                                             }))
