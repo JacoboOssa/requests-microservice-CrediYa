@@ -24,4 +24,5 @@ USER appuser
 
 # Comando de inicio
 #ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar RequestsCrediYaMicroservice.jar"]
+#ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar RequestsCrediYaMicroservice.jar"]
 ENTRYPOINT ["java", "-jar", "RequestsCrediYaMicroservice.jar"]
