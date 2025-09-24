@@ -13,12 +13,12 @@ spring:
     include: null
 adapters:
   r2dbc:
-    host: "${DB_HOST:localhost}"
-    port: "${DB_PORT:5432}"
-    database: "${DB_NAME:requests_db}"
-    schema: "${DB_SCHEMA:public}"
-    username: "${DB_USER:postgres}"
-    password: "${DB_PASSWORD:postgres123}"
+    host: ${DB_HOST:localhost}
+    port: ${DB_PORT:5433}
+    database: ${DB_NAME:requestsdb}
+    schema: ${DB_SCHEMA:public}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres123}
 management:
   endpoints:
     web:
@@ -85,7 +85,7 @@ routes:
 entrypoint:
   sqs:
     region: "${AWS_REGION:us-east-2}"
-    queueUrl: "https://sqs.us-east-2.amazonaws.com/058264169618/loanStatusAutomaticValidatorSQS"
+    queueUrl: "${SQS_LOAN_STATUS_AUTOMATIC_VALIDATOR:https://sqs.us-east-2.amazonaws.com/058264169618/loanStatusAutomaticValidatorSQS}"
     waitTimeSeconds: 20
     maxNumberOfMessages: 10
     visibilityTimeoutSeconds: 10
