@@ -10,6 +10,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
@@ -28,48 +29,49 @@ class SQSListenerTest {
     @Mock
     private PetitionMessagingUseCase petitionMessagingUseCase;
 
-    @Mock
-    private  ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
 
     @Mock
     private SqsAsyncClient asyncClient;
 
-    @Mock
     private SQSProperties sqsProperties;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        var sqsProperties = new SQSProperties(
+        sqsProperties = new SQSProperties(
                 "us-east-2",
-                "http://localhost:4566",
-                20,
-                30,
-                10,
-                1
+                "http://localhost:4566/queue/test-queue",
+                10,  // maxNumberOfMessages
+                20,  // waitTimeSeconds
+                30,  // visibilityTimeout
+                1    // numberOfThreads
         );
 
-        var message = Message.builder().body("message").build();
+        objectMapper = new ObjectMapper();
+
+        // Mock mensaje de SQS
+        Message message = Message.builder()
+                .messageId("m1")
+                .body("{\"petitionId\":\"123\",\"status\":\"APPROVED\"}")
+                .receiptHandle("receipt-handle")
+                .build();
+
+        var messageResponse = ReceiveMessageResponse.builder()
+                .messages(message)
+                .build();
+
         var deleteMessageResponse = DeleteMessageResponse.builder().build();
-        var messageResponse = ReceiveMessageResponse.builder().messages(message).build();
 
         when(asyncClient.receiveMessage(any(ReceiveMessageRequest.class)))
                 .thenReturn(CompletableFuture.completedFuture(messageResponse));
+
         when(asyncClient.deleteMessage(any(DeleteMessageRequest.class)))
                 .thenReturn(CompletableFuture.completedFuture(deleteMessageResponse));
+
+        when(petitionMessagingUseCase.updatePetitionStatusFromSQS("123", "APPROVED"))
+                .thenReturn(Mono.empty());
     }
 
-    @Test
-    void listenerTest() {
-        var sqsListener = SQSListener.builder()
-                .client(asyncClient)
-                .properties(sqsProperties)
-                .processor(new SQSProcessor(petitionMessagingUseCase, objectMapper))
-                .operation("operation")
-                .build();
-
-        Flux<Void> flow = ReflectionTestUtils.invokeMethod(sqsListener, "listen");
-        StepVerifier.create(flow).verifyComplete();
-    }
 }

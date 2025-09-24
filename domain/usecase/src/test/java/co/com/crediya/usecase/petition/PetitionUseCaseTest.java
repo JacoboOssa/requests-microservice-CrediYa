@@ -1,24 +1,14 @@
 package co.com.crediya.usecase.petition;
 
 import co.com.crediya.model.dto.ListPetitionsDTO;
-import co.com.crediya.model.exception.AuthorizationException;
-import co.com.crediya.model.exception.BusinessException;
-import co.com.crediya.model.exception.JwtException;
 import co.com.crediya.model.loantype.LoanType;
-import co.com.crediya.model.loantype.gateways.LoanTypeRepository;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.model.petition.gateways.PetitionRepository;
 import co.com.crediya.model.status.Status;
-import co.com.crediya.model.status.gateways.StatusRepository;
 import co.com.crediya.model.user.Role;
 import co.com.crediya.model.user.User;
-import co.com.crediya.model.user.gateways.UserRepository;
 import co.com.crediya.usecase.auth.AuthUseCase;
 import co.com.crediya.usecase.mapper.PetitionMapper;
-import co.com.crediya.usecase.petition.util.LoanTypeUtil;
-import co.com.crediya.usecase.petition.util.PetitionUtil;
-import co.com.crediya.usecase.petition.util.StatusUtil;
-import co.com.crediya.usecase.petition.util.UserUtil;
 import co.com.crediya.usecase.petitionmessaging.PetitionMessagingUseCase;
 import co.com.crediya.usecase.petitionvalidator.PetitionValidatorUseCase;
 import org.junit.jupiter.api.Test;
@@ -30,8 +20,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;

@@ -8,6 +8,7 @@ import co.com.crediya.api.util.PetitionUtil;
 import co.com.crediya.api.validator.PetitionValidator;
 import co.com.crediya.model.petition.Petition;
 import co.com.crediya.usecase.petition.PetitionUseCase;
+import co.com.crediya.usecase.petitionmessaging.PetitionMessagingUseCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,7 @@ import reactor.core.publisher.Mono;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests","routes.paths.get-all-requests=/api/v1/requests"})
+@TestPropertySource(properties = {"routes.paths.request=/api/v1/requests","routes.paths.get-all-requests=/api/v1/requests", "routes.paths.update-request-status=/api/v1/requests/{id}/status"})
 @EnableConfigurationProperties(RequestPath.class)
 @ContextConfiguration(classes = {RouterRest.class, Handler.class})
 @WebFluxTest
@@ -41,6 +42,9 @@ class ConfigTest {
 
     @MockitoBean
     private PetitionUseCase petitionUseCase;
+
+    @MockitoBean
+    private PetitionMessagingUseCase petitionMessagingUseCase;
 
     @Autowired
     private RequestPath requestPath;

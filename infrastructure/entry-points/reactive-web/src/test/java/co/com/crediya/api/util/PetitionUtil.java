@@ -1,6 +1,7 @@
 package co.com.crediya.api.util;
 
 import co.com.crediya.api.dto.request.CreatePetitionDTO;
+import co.com.crediya.api.dto.request.UpdateStatusPetitionDTO;
 import co.com.crediya.api.dto.response.PetitionResponseDTO;
 import co.com.crediya.model.dto.ListPetitionsDTO;
 import co.com.crediya.model.petition.Petition;
@@ -50,6 +51,12 @@ public class PetitionUtil {
                 .loanTypeName("Personal")
                 .statusName("MANUAL_REVISION")
                 .totalMonthlyDebtApproved(BigDecimal.ZERO)
+                .build();
+    }
+
+    public static UpdateStatusPetitionDTO updateStatusPetitionDTO() {
+        return UpdateStatusPetitionDTO.builder()
+                .status("APPROVED") // o el valor que uses en tus tests
                 .build();
     }
 }

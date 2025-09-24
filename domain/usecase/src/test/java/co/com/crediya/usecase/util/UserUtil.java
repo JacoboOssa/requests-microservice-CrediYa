@@ -1,4 +1,4 @@
-package co.com.crediya.usecase.petition.util;
+package co.com.crediya.usecase.util;
 
 import co.com.crediya.model.user.User;
 

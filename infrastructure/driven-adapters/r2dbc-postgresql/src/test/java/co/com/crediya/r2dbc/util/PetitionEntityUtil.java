@@ -25,5 +25,16 @@ public class PetitionEntityUtil {
                 .loanTypeId("2")
                 .build();
     }
+
+    public static PetitionEntity petitionEntity3(){
+        return PetitionEntity.builder()
+                .id("3")
+                .term(24)
+                .amount(BigDecimal.valueOf(5000000))
+                .email("abogadesubrogador@gmail.com")
+                .statusId("2")
+                .loanTypeId("3")
+                .build();
+    }
 }
 

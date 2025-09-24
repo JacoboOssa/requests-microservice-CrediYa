@@ -10,4 +10,12 @@ public class StatusUtil {
                 .description("Pending status")
                 .build();
     }
+
+    public static Status status2(){
+        return Status.builder()
+                .id("2")
+                .name("APROBADA")
+                .description("Approved status")
+                .build();
+    }
 }
