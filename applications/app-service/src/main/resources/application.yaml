@@ -13,12 +13,12 @@ spring:
     include: null
 adapters:
   r2dbc:
-    host: ${DB_HOST:localhost}
-    port: ${DB_PORT:5433}
-    database: ${DB_NAME:requestsdb}
-    schema: ${DB_SCHEMA:public}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres123}
+    host: "${DB_HOST:requestsdb.cns28oo22mip.us-east-2.rds.amazonaws.com}"
+    port: "${DB_PORT:5432}"
+    database: "${DB_NAME:postgres}"
+    schema: "${DB_SCHEMA:public}"
+    username: "${DB_USER:postgres}"
+    password: "${DB_PASSWORD:gizRi2-fyhnos-josgeq}"
 management:
   endpoints:
     web:
@@ -45,15 +45,12 @@ adapter:
     manual-review:
       region: "${AWS_REGION:us-east-2}"
       queueUrl: "${SQS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/058264169618/CrediYaQueue}"
-
     automatic-review:
       region: "${AWS_REGION:us-east-2}"
       queueUrl: "${SQS_AUTOMATIC_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/058264169618/debtAutomaticSQS}"
-
     reports:
       region: "${AWS_REGION:us-east-2}"
       queue-url: "${SQS_REPORTS_QUEUE_URL:https://sqs.us-east-2.amazonaws.com/058264169618/ReportsSQS}"
-
     accessKeyId: "${AWS_ACCESS_KEY_ID}"
     secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
 resilience4j:
@@ -90,3 +87,8 @@ entrypoint:
     maxNumberOfMessages: 10
     visibilityTimeoutSeconds: 10
     numberOfThreads: 1
+aws:
+  region: "us-east-2"
+  secrets:
+    requests: "requests_secrets"
+    authConnection: "auth_connection_secret"
